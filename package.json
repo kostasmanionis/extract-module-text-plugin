@@ -1,0 +1,29 @@
+{
+  "name": "extract-module-text-plugin",
+  "version": "0.0.1",
+  "description": "A webpack plugin for extracting text for a list of modules",
+  "main": "index.js",
+  "engines": {
+    "node": ">=4.0.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kostasmanionis/extract-module-text-plugin.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/kostasmanionis/extract-module-text-plugin/issues"
+  },
+  "homepage": "https://github.com/kostasmanionis/extract-module-text-plugin#readme",
+  "peerDependencies": {
+    "webpack": "^2.1.0-beta.19",
+    "extract-text-webpack-plugin": "^2.0.0-beta.4"
+  },
+  "dependencies": {
+    "loader-utils": "^0.2.16"
+  }
+}
