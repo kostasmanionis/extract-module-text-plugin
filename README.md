@@ -1,4 +1,4 @@
-# extract-module-text-plugin
+# extract-module-text-webpack-plugin
 A webpack plugin for extracting text for a list of modules
 
 **UNSTABLE, BUGGY & HORRIBLE**
@@ -12,7 +12,7 @@ A webpack plugin for extracting text for a list of modules
 ## Usage
 
 ```
-const ExtractModuleText = require('extract-module-text-plugin');
+const ExtractModuleText = require('extract-module-text-webpack-plugin');
 
 ...webpack config
     plugins: [
