@@ -1,6 +1,8 @@
 const loaderUtils = require('loader-utils');
 const Chunk = require('webpack/lib/Chunk');
 const ExtractTextPlugin = require('extract-text-webpack-plugin');
+const fs = require('fs');
+const NS = fs.realpathSync(__dirname);
 
 function ExtractFoldCss(options) {
     this.options = options;
@@ -19,10 +21,10 @@ ExtractFoldCss.prototype.apply = function (compiler) {
 
     function search(module, chunkName) {
         // Check if the css file name matches provided regexp
-        if (cssFileTest.test(module.fileDependencies[0])) {
+        if (cssFileTest.test(module.resource)) {
             // Check if we haven't already found that file'
-            if (foundModules[chunkName].indexOf(module.fileDependencies[0]) === -1) {
-                foundModules[chunkName].push(module.fileDependencies[0]);
+            if (foundModules[chunkName].indexOf(module.resource) === -1) {
+                foundModules[chunkName].push(module.resource);
             }
         }
 
@@ -38,9 +40,8 @@ ExtractFoldCss.prototype.apply = function (compiler) {
         compilation.plugin("after-optimize-chunks", function (chunks) {
             chunks.forEach(function (chunk) {
                 chunk.modules.forEach(function (module) {
-
                     // Search for modules that need their css extracted
-                    if (isAboveModule(module.fileDependencies[0])) {
+                    if (module.resource && isAboveModule(module.resource)) {
                         foundModules[chunk.name] = [];
                         search(module, chunk.name);
                     }
@@ -50,22 +51,22 @@ ExtractFoldCss.prototype.apply = function (compiler) {
 
         compilation.plugin("optimize-extracted-chunks", function (chunksToOptimize) {
             chunksToOptimize.forEach(function (extractedChunk) {
-                if (!extractedChunk._kostas && extractedChunk.modules.length) {
+                if (!extractedChunk[NS] && extractedChunk.modules.length) {
 
-                    const chunk = extractedChunk.originalChunk;
+                    const originalChunk = extractedChunk.originalChunk;
                     const extractedAboveFoldChunk = new Chunk();
                     const modulesToRemove = [];
 
-                    extractedAboveFoldChunk.originalChunk = chunk;
-                    extractedAboveFoldChunk.name = chunk.name;
-                    extractedAboveFoldChunk.entrypoints = chunk.entrypoints;
+                    extractedAboveFoldChunk.originalChunk = originalChunk;
+                    extractedAboveFoldChunk.name = originalChunk.name;
+                    extractedAboveFoldChunk.entrypoints = originalChunk.entrypoints;
 
-                    // chunk.chunks.forEach(function(c) {
-                    //     extractedAboveFoldChunk.addChunk(extractedAboveFoldChunk[chunks.indexOf(c)]);
-                    // });
-                    // chunk.parents.forEach(function(c) {
-                    //     extractedAboveFoldChunk.addParent(extractedAboveFoldChunk[chunks.indexOf(c)]);
-                    // });
+                    originalChunk.chunks.forEach(function (chunk) {
+                        extractedAboveFoldChunk.addChunk(chunk);
+                    });
+                    originalChunk.parents.forEach(function (chunk) {
+                        extractedAboveFoldChunk.addParent(chunk);
+                    });
 
                     extractedChunk.modules.forEach(function (module) {
                         if (foundModules[extractedAboveFoldChunk.name].indexOf(module._originalModule.resource) > -1) {
@@ -79,8 +80,8 @@ ExtractFoldCss.prototype.apply = function (compiler) {
                         func();
                     });
 
-                    extractedAboveFoldChunk._kostas = true;
-                    extractedChunk._kostas = true;
+                    extractedAboveFoldChunk[NS] = true;
+                    extractedChunk[NS] = true;
 
                     extractedAboveFoldChunks.push(extractedAboveFoldChunk);
 
