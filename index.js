@@ -18,19 +18,26 @@ ExtractFoldCss.prototype.apply = function (compiler) {
     const isAboveModule = isWantedModule(modules);
     const foundModules = {};
     const extractedAboveFoldChunks = [];
+    const seenModules = [];
 
     function search(module, chunkName) {
-        // Check if the css file name matches provided regexp
-        if (cssFileTest.test(module.resource)) {
-            // Check if we haven't already found that file'
-            if (foundModules[chunkName].indexOf(module.resource) === -1) {
-                foundModules[chunkName].push(module.resource);
+
+        if (seenModules.indexOf(module.resource) === -1) {
+            // Check if the css file name matches provided regexp
+            if (cssFileTest.test(module.resource)) {
+                // Check if we haven't already found that file'
+                if (foundModules[chunkName].indexOf(module.resource) === -1) {
+                    foundModules[chunkName].push(module.resource);
+                }
             }
+
+            seenModules.push(module.resource);
+            return module.getAllModuleDependencies && module.getAllModuleDependencies().forEach(function (dependency) {
+                return search(dependency, chunkName);
+            });
         }
 
-        return module.getAllModuleDependencies().forEach(function (dependency) {
-            return search(dependency, chunkName);
-        });
+        return;
     }
 
 
@@ -54,6 +61,12 @@ ExtractFoldCss.prototype.apply = function (compiler) {
                 if (!extractedChunk[NS] && extractedChunk.modules.length) {
 
                     const originalChunk = extractedChunk.originalChunk;
+
+                    // No modules extracted for this chunk? Bye.
+                    if (!foundModules[originalChunk.name]) {
+                        return;
+                    };
+
                     const extractedAboveFoldChunk = new Chunk();
                     const modulesToRemove = [];
 
