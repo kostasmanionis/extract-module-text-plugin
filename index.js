@@ -1,3 +1,5 @@
+'use strict';
+
 const loaderUtils = require('loader-utils');
 const Chunk = require('webpack/lib/Chunk');
 const ExtractTextPlugin = require('extract-text-webpack-plugin');
