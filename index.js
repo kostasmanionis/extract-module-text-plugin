@@ -2,54 +2,65 @@ const loaderUtils = require('loader-utils');
 const Chunk = require('webpack/lib/Chunk');
 const ExtractTextPlugin = require('extract-text-webpack-plugin');
 const fs = require('fs');
+const utils = require('./utils');
 const NS = fs.realpathSync(__dirname);
 
-function ExtractFoldCss(options) {
+function ExtractModuleTextPlugin(options) {
     this.options = options;
 }
 
-ExtractFoldCss.prototype.apply = function (compiler) {
+ExtractModuleTextPlugin.prototype.apply = function (compiler) {
 
     const filename = this.options.filename;
     const modules = this.options.modules;
-    const cssFileTest = this.options.test;
+    const moduleToExtractTest = this.options.test;
 
     const isWantedModule = array => moduleName => array.some(module => moduleName.indexOf(module) > -1);
     const isAboveModule = isWantedModule(modules);
-    const foundModules = {};
-    const extractedAboveFoldChunks = [];
-    const seenModules = [];
+    const modulesToExtract = {};
+    const extractedChunks = [];
+    const visitedModules = [];
+    let moduleIdentifier;
+    let foundModulesToExtract;
 
     function search(module, chunkName) {
 
-        if (seenModules.indexOf(module.resource) === -1) {
-            // Check if the css file name matches provided regexp
-            if (cssFileTest.test(module.resource)) {
-                // Check if we haven't already found that file'
-                if (foundModules[chunkName].indexOf(module.resource) === -1) {
-                    foundModules[chunkName].push(module.resource);
-                }
+        moduleIdentifier = module.resource;
+        foundModulesToExtract = modulesToExtract[chunkName];
+
+        /**
+         * For performance and stack overflow reasons we need to keep track of modules that we've already visited.
+         * We also check if we haven't already extracted the module.
+         */
+        if (!utils.isInArray(moduleIdentifier, visitedModules) && !utils.isInArray(moduleIdentifier, foundModulesToExtract)) {
+
+            // Flag the module as already visited.
+            visitedModules.push(moduleIdentifier);
+
+            if (moduleToExtractTest.test(moduleIdentifier)) {
+                // Save the module, so it gets extracted later.
+                foundModulesToExtract.push(moduleIdentifier);
             }
 
-            seenModules.push(module.resource);
-            return module.getAllModuleDependencies && module.getAllModuleDependencies().forEach(function (dependency) {
-                return search(dependency, chunkName);
-            });
+            return module.getAllModuleDependencies && module.getAllModuleDependencies()
+                .forEach(function (dependency) {
+                    return search(dependency, chunkName);
+                });
         }
 
         return;
     }
 
-
-    // Setup callback for accessing a compilation:
     compiler.plugin("compilation", function (compilation) {
 
         compilation.plugin("after-optimize-chunks", function (chunks) {
             chunks.forEach(function (chunk) {
                 chunk.modules.forEach(function (module) {
-                    // Search for modules that need their css extracted
+                    // Search for modules that need their css extracted.
                     if (module.resource && isAboveModule(module.resource)) {
-                        foundModules[chunk.name] = [];
+
+                        // Create an array to store wanted modules for a given chunk.
+                        modulesToExtract[chunk.name] = [];
                         search(module, chunk.name);
                     }
                 });
@@ -57,34 +68,34 @@ ExtractFoldCss.prototype.apply = function (compiler) {
         });
 
         compilation.plugin("optimize-extracted-chunks", function (chunksToOptimize) {
-            chunksToOptimize.forEach(function (extractedChunk) {
-                if (!extractedChunk[NS] && extractedChunk.modules.length) {
+            chunksToOptimize.forEach(function (extractTextPluginChunk) {
 
-                    const originalChunk = extractedChunk.originalChunk;
+                /**
+                 * First we check if have any modules to extract for this chunk.
+                 * Secondly we check if we haven't already handled this particular chunk.
+                 */
+                if (modulesToExtract[extractTextPluginChunk.name] && modulesToExtract[extractTextPluginChunk.name].length && !extractTextPluginChunk[NS]) {
 
-                    // No modules extracted for this chunk? Bye.
-                    if (!foundModules[originalChunk.name]) {
-                        return;
-                    };
+                    const originalChunk = extractTextPluginChunk.originalChunk;
 
-                    const extractedAboveFoldChunk = new Chunk();
+                    const extractedChunk = new Chunk();
                     const modulesToRemove = [];
 
-                    extractedAboveFoldChunk.originalChunk = originalChunk;
-                    extractedAboveFoldChunk.name = originalChunk.name;
-                    extractedAboveFoldChunk.entrypoints = originalChunk.entrypoints;
+                    extractedChunk.originalChunk = originalChunk;
+                    extractedChunk.name = originalChunk.name;
+                    extractedChunk.entrypoints = originalChunk.entrypoints;
 
                     originalChunk.chunks.forEach(function (chunk) {
-                        extractedAboveFoldChunk.addChunk(chunk);
+                        extractedChunk.addChunk(chunk);
                     });
                     originalChunk.parents.forEach(function (chunk) {
-                        extractedAboveFoldChunk.addParent(chunk);
+                        extractedChunk.addParent(chunk);
                     });
 
-                    extractedChunk.modules.forEach(function (module) {
-                        if (foundModules[extractedAboveFoldChunk.name].indexOf(module._originalModule.resource) > -1) {
-                            extractedAboveFoldChunk.addModule(module);
-                            modulesToRemove.push(extractedChunk.removeModule.bind(extractedChunk, module));
+                    extractTextPluginChunk.modules.forEach(function (module) {
+                        if (modulesToExtract[extractedChunk.name].indexOf(module._originalModule.resource) > -1) {
+                            extractedChunk.addModule(module);
+                            modulesToRemove.push(extractTextPluginChunk.removeModule.bind(extractTextPluginChunk, module));
                         }
                     });
 
@@ -93,21 +104,22 @@ ExtractFoldCss.prototype.apply = function (compiler) {
                         func();
                     });
 
-                    extractedAboveFoldChunk[NS] = true;
+                    // Flag the chunks so we don't extract from them more than once.
                     extractedChunk[NS] = true;
+                    extractTextPluginChunk[NS] = true;
 
-                    extractedAboveFoldChunks.push(extractedAboveFoldChunk);
+                    extractedChunks.push(extractedChunk);
 
-                    // Do one more run if some other plugin needs to optimize these
-                    compilation.applyPlugins('optimize-extracted-chunks', [extractedAboveFoldChunk]);
+                    // Do one more run if some other plugin needs to optimize these.
+                    compilation.applyPlugins('optimize-extracted-chunks', [extractedChunk]);
                 }
             });
         });
 
         compilation.plugin('additional-assets', function (callback) {
-            extractedAboveFoldChunks.forEach(function (extractedAboveFoldChunk) {
-                const chunk = extractedAboveFoldChunk.originalChunk;
-                const source = ExtractTextPlugin.prototype.renderExtractedChunk(extractedAboveFoldChunk);
+            extractedChunks.forEach(function (extractedChunk) {
+                const chunk = extractedChunk.originalChunk;
+                const source = ExtractTextPlugin.prototype.renderExtractedChunk(extractedChunk);
                 const file = compilation.getPath(filename, {
                     chunk: chunk
                 }).replace(/\[(?:(\w+):)?contenthash(?::([a-z]+\d*))?(?::(\d+))?\]/ig, function () {
@@ -121,4 +133,4 @@ ExtractFoldCss.prototype.apply = function (compiler) {
     });
 };
 
-module.exports = ExtractFoldCss;
+module.exports = ExtractModuleTextPlugin;
