@@ -57,15 +57,22 @@ ExtractModuleTextPlugin.prototype.apply = function (compiler) {
 
         compilation.plugin("after-optimize-chunks", function (chunks) {
             chunks.forEach(function (chunk) {
-                chunk.modules.forEach(function (module) {
-                    // Search for modules that need their css extracted.
-                    if (module.resource && isAboveModule(module.resource)) {
 
-                        // Create an array to store wanted modules for a given chunk.
-                        modulesToExtract[chunk.name] = [];
-                        search(module, chunk.name);
-                    }
-                });
+                // Let's try to support webpack 1 & 2
+                const isInitialChunk = chunk.isInitial && chunk.isInitial() || chunk.initial;
+
+                // ExtractTextPlugin only hanles initial chunks, we do the same.
+                if (isInitialChunk) {
+                    chunk.modules.forEach(function (module) {
+                        // Search for modules that need their css extracted.
+                        if (module.resource && isAboveModule(module.resource)) {
+
+                            // Create an array to store wanted modules for a given chunk.
+                            modulesToExtract[chunk.name] = [];
+                            search(module, chunk.name);
+                        }
+                    });
+                }
             });
         });
 
