@@ -20,10 +20,16 @@
   },
   "homepage": "https://github.com/kostasmanionis/extract-module-text-plugin#readme",
   "peerDependencies": {
-    "webpack": "^2.1.0-beta.19",
-    "extract-text-webpack-plugin": "^2.0.0-beta.4"
+    "extract-text-webpack-plugin": ">=1.0.1 ",
+    "webpack": ">=2.0.0"
   },
   "dependencies": {
+    "debug": "^2.5.1",
     "loader-utils": "^0.2.16"
+  },
+  "devDependencies": {
+    "extract-text-webpack-plugin": "^1.0.1",
+    "jest": "^16.0.2",
+    "webpack": "^1.13.2"
   }
 }
