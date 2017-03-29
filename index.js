@@ -136,7 +136,7 @@ module.exports = class ExtractModuleTextPlugin {
             /**
              * This might get called a lot, so we flag the chunks that we've already outputed.
              */
-            if (extractedChunk.__outputDone === 'undefined') {
+            if (extractedChunk.__outputDone === undefined) {
                 const chunk = extractedChunk.originalChunk;
                 log('Outputing chunk ', chunk.name,' assets');
                 const source = ExtractTextPlugin.prototype.renderExtractedChunk(extractedChunk);
