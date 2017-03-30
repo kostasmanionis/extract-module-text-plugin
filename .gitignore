@@ -1,3 +1,5 @@
 lib
 node_modules
 *.log
+.DS_Store
+__test__/__mocks__/trash
