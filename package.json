@@ -7,7 +7,10 @@
     "node": ">=4.0.0"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest"
+  },
+  "jest": {
+    "testEnvironment": "node"
   },
   "repository": {
     "type": "git",
@@ -28,8 +31,10 @@
     "loader-utils": "^0.2.16"
   },
   "devDependencies": {
-    "extract-text-webpack-plugin": "^1.0.1",
-    "jest": "^16.0.2",
-    "webpack": "^1.13.2"
+    "css-loader": "^0.28.0",
+    "extract-text-webpack-plugin": "^2.1.0",
+    "jest": "^19.0.2",
+    "style-loader": "^0.16.1",
+    "webpack": "^2.3.2"
   }
 }
