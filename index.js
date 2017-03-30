@@ -21,9 +21,7 @@ module.exports = class ExtractModuleTextPlugin {
     }
 
     isWantedModule(array) {
-        return function(moduleName) {
-            return array.some(module => moduleName.includes(module));
-        }
+        return moduleName => array.some(module => moduleName.includes(module));
     }
 
     traverse(dependency, chunkName) {
@@ -31,7 +29,7 @@ module.exports = class ExtractModuleTextPlugin {
 
         if (!module) {
             log(`Module not found, stoping traversal for chunk ${chunkName}`);
-            return;
+            return null;
         }
 
         const moduleIdentifier = module.resource;
@@ -52,11 +50,10 @@ module.exports = class ExtractModuleTextPlugin {
                 chunkExtractedModules.push(moduleIdentifier);
             }
 
-            return module.dependencies && module.dependencies
-                .forEach((dependency) => this.traverse(dependency, chunkName));
+            return module.dependencies && module.dependencies.forEach(dep => this.traverse(dep, chunkName));
         }
 
-        return;
+        return null;
     }
 
     searchChunks(chunks) {
@@ -79,7 +76,7 @@ module.exports = class ExtractModuleTextPlugin {
     }
 
     extractModulesFromChunks(chunks, compilation) {
-        chunks.forEach((chunk) => {
+        chunks.forEach(chunk => {
 
             /**
              * First we check if have any modules to extract for this chunk.
@@ -100,8 +97,8 @@ module.exports = class ExtractModuleTextPlugin {
                 extractedChunk.name = originalChunk.name;
                 extractedChunk.entrypoints = originalChunk.entrypoints;
 
-                originalChunk.chunks.forEach(chunk => extractedChunk.addChunk(chunk));
-                originalChunk.parents.forEach(chunk => extractedChunk.addParent(chunk));
+                originalChunk.chunks.forEach(olChunk => extractedChunk.addChunk(olChunk));
+                originalChunk.parents.forEach(olChunk => extractedChunk.addParent(olChunk));
 
                 chunk.modules.forEach(module => {
                     const moduleResource = module._originalModule.resource;
@@ -138,7 +135,7 @@ module.exports = class ExtractModuleTextPlugin {
              */
             if (extractedChunk.__outputDone === undefined) {
                 const chunk = extractedChunk.originalChunk;
-                log('Outputing chunk ', chunk.name,' assets');
+                log(`Outputing chunk ${chunk.name} assets`);
                 const source = ExtractTextPlugin.prototype.renderExtractedChunk(extractedChunk);
                 const file = compilation.getPath(this.options.filename, {
                     chunk: chunk
@@ -161,4 +158,4 @@ module.exports = class ExtractModuleTextPlugin {
             compilation.plugin('additional-assets', callback => this.outputChunkAssets(callback, compilation));
         });
     }
-}
+};
